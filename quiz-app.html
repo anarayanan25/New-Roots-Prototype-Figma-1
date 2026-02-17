@@ -1,0 +1,720 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="mobile-web-app-capable" content="yes">
+    <title>Quiz Time</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        html, body {
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            position: fixed;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #6B4FE8 0%, #C84DB8 50%, #E14D9A 100%);
+            color: white;
+            overscroll-behavior: none;
+        }
+
+        .app-container {
+            height: 100vh;
+            height: 100dvh;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        /* Header */
+        .header {
+            padding: 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-shrink: 0;
+        }
+
+        .quiz-title {
+            font-size: 28px;
+            font-weight: 700;
+        }
+
+        .score {
+            font-size: 18px;
+            font-weight: 600;
+            background: rgba(255, 255, 255, 0.2);
+            padding: 8px 16px;
+            border-radius: 20px;
+        }
+
+        /* Question Counter */
+        .question-counter {
+            text-align: center;
+            font-size: 16px;
+            opacity: 0.9;
+            margin-bottom: 20px;
+        }
+
+        /* Quiz Content */
+        .quiz-content {
+            flex: 1;
+            position: relative;
+            overflow: hidden;
+            padding: 0 20px;
+            min-height: 0;
+        }
+
+        .question-card {
+            position: absolute;
+            width: calc(100% - 40px);
+            height: 100%;
+            left: 20px;
+            top: 0;
+            display: flex;
+            flex-direction: column;
+            opacity: 0;
+            transform: translateX(100%);
+            transition: all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+            touch-action: pan-x;
+        }
+
+        .question-card.active {
+            opacity: 1;
+            transform: translateX(0);
+        }
+
+        .question-card.prev {
+            opacity: 0;
+            transform: translateX(-100%);
+        }
+
+        .question-card.swiping {
+            transition: none;
+        }
+
+        /* Profile Card */
+        .profile-card {
+            background: rgba(255, 255, 255, 0.15);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            padding: 16px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 30px;
+        }
+
+        .profile-avatar {
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #FF6B9D, #FEC163);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+            flex-shrink: 0;
+        }
+
+        .profile-info {
+            flex: 1;
+        }
+
+        .profile-name {
+            font-size: 18px;
+            font-weight: 700;
+            margin-bottom: 4px;
+        }
+
+        .profile-subject {
+            font-size: 14px;
+            opacity: 0.8;
+        }
+
+        /* Question */
+        .question-text {
+            font-size: 24px;
+            font-weight: 700;
+            line-height: 1.4;
+            margin-bottom: 30px;
+            text-align: center;
+        }
+
+        /* Answers */
+        .answers {
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+            margin-bottom: 30px;
+        }
+
+        .answer-btn {
+            background: rgba(255, 255, 255, 0.15);
+            backdrop-filter: blur(10px);
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            border-radius: 20px;
+            padding: 20px;
+            font-size: 18px;
+            font-weight: 600;
+            color: white;
+            cursor: pointer;
+            transition: all 0.3s;
+            -webkit-appearance: none;
+            text-align: center;
+        }
+
+        .answer-btn:active {
+            transform: scale(0.98);
+        }
+
+        .answer-btn.correct {
+            background: #00D66F;
+            border-color: #00D66F;
+            animation: correctPulse 0.5s;
+        }
+
+        .answer-btn.incorrect {
+            background: #FF4757;
+            border-color: #FF4757;
+            animation: shake 0.5s;
+        }
+
+        .answer-btn.disabled {
+            opacity: 0.5;
+            pointer-events: none;
+        }
+
+        .answer-btn .checkmark {
+            display: none;
+            margin-left: 10px;
+        }
+
+        .answer-btn.correct .checkmark {
+            display: inline;
+        }
+
+        @keyframes correctPulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+        }
+
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            25% { transform: translateX(-10px); }
+            75% { transform: translateX(10px); }
+        }
+
+        /* Feedback */
+        .feedback {
+            text-align: center;
+            font-size: 18px;
+            font-weight: 600;
+            margin-bottom: 20px;
+            opacity: 0;
+            transform: translateY(10px);
+            transition: all 0.3s;
+        }
+
+        .feedback.show {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        /* Social Bar */
+        .social-bar {
+            display: flex;
+            justify-content: space-around;
+            align-items: center;
+            padding: 16px;
+            background: rgba(0, 0, 0, 0.2);
+            border-radius: 20px;
+            margin-top: auto;
+        }
+
+        .social-item {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 14px;
+            cursor: pointer;
+            transition: transform 0.2s;
+        }
+
+        .social-item:active {
+            transform: scale(0.95);
+        }
+
+        .social-icon {
+            font-size: 20px;
+        }
+
+        /* Bottom Hint */
+        .bottom-hint {
+            text-align: center;
+            padding: 20px;
+            font-size: 14px;
+            opacity: 0.8;
+            flex-shrink: 0;
+        }
+
+        /* Navigation Arrows */
+        .nav-arrows {
+            display: none;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0 20px 20px;
+            gap: 10px;
+        }
+
+        .nav-arrows.show {
+            display: flex;
+        }
+
+        .nav-arrow {
+            font-size: 32px;
+            cursor: pointer;
+            transition: transform 0.2s;
+            padding: 10px;
+        }
+
+        .nav-arrow:active {
+            transform: scale(0.9);
+        }
+
+        .nav-arrow.disabled {
+            opacity: 0.3;
+            pointer-events: none;
+        }
+
+        .nav-text {
+            flex: 1;
+            text-align: center;
+            font-size: 14px;
+            opacity: 0.9;
+        }
+
+        /* Results Screen */
+        .results-screen {
+            display: none;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100%;
+            padding: 40px;
+            text-align: center;
+        }
+
+        .results-screen.show {
+            display: flex;
+        }
+
+        .results-emoji {
+            font-size: 80px;
+            margin-bottom: 20px;
+            animation: bounce 1s infinite;
+        }
+
+        @keyframes bounce {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-20px); }
+        }
+
+        .results-title {
+            font-size: 32px;
+            font-weight: 700;
+            margin-bottom: 10px;
+        }
+
+        .results-score {
+            font-size: 48px;
+            font-weight: 700;
+            margin-bottom: 20px;
+        }
+
+        .results-message {
+            font-size: 18px;
+            opacity: 0.9;
+            margin-bottom: 40px;
+        }
+
+        .restart-btn {
+            background: white;
+            color: #6B4FE8;
+            border: none;
+            border-radius: 16px;
+            padding: 16px 48px;
+            font-size: 18px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.2s;
+        }
+
+        .restart-btn:active {
+            transform: scale(0.95);
+        }
+    </style>
+</head>
+<body>
+
+<div class="app-container">
+    <!-- Header -->
+    <div class="header">
+        <h1 class="quiz-title">Quiz Time</h1>
+        <div class="score"><span id="currentScore">0</span> / <span id="totalQuestions">6</span></div>
+    </div>
+
+    <!-- Question Counter -->
+    <div class="question-counter">
+        <span id="currentQuestion">1</span> / <span id="totalQuestionsCounter">6</span>
+    </div>
+
+    <!-- Quiz Content -->
+    <div class="quiz-content" id="quizContent">
+        <!-- Question cards will be inserted here -->
+    </div>
+
+    <!-- Navigation Arrows -->
+    <div class="nav-arrows" id="navArrows">
+        <div class="nav-arrow" id="prevArrow">←</div>
+        <div class="nav-text">Select answer, then swipe</div>
+        <div class="nav-arrow" id="nextArrow">→</div>
+    </div>
+
+    <!-- Bottom Hint -->
+    <div class="bottom-hint" id="bottomHint">
+        Tap an answer to check if it's correct
+    </div>
+
+    <!-- Results Screen -->
+    <div class="results-screen" id="resultsScreen">
+        <div class="results-emoji">🎉</div>
+        <h2 class="results-title">Quiz Complete!</h2>
+        <div class="results-score"><span id="finalScore">0</span> / <span id="finalTotal">6</span></div>
+        <p class="results-message" id="resultsMessage">Great job!</p>
+        <button class="restart-btn" id="restartBtn">Play Again</button>
+    </div>
+</div>
+
+<script>
+(function() {
+    'use strict';
+
+    const quizData = [
+        {
+            id: 1,
+            profile: { name: "Sarah Chen", subject: "Geography", emoji: "🌍" },
+            question: "What is the capital of France?",
+            answers: ["London", "Paris", "Berlin"],
+            correct: 1
+        },
+        {
+            id: 2,
+            profile: { name: "Marcus Johnson", subject: "Science", emoji: "🔬" },
+            question: "Which planet is known as the Red Planet?",
+            answers: ["Venus", "Jupiter", "Mars"],
+            correct: 2
+        },
+        {
+            id: 3,
+            profile: { name: "Aisha Patel", subject: "History", emoji: "📚" },
+            question: "Who painted the Mona Lisa?",
+            answers: ["Vincent van Gogh", "Leonardo da Vinci", "Pablo Picasso"],
+            correct: 1
+        },
+        {
+            id: 4,
+            profile: { name: "Carlos Rivera", subject: "Math", emoji: "🔢" },
+            question: "What is 7 × 8?",
+            answers: ["54", "56", "58"],
+            correct: 1
+        },
+        {
+            id: 5,
+            profile: { name: "Emma Watson", subject: "Literature", emoji: "📖" },
+            question: "Who wrote 'Romeo and Juliet'?",
+            answers: ["Charles Dickens", "William Shakespeare", "Jane Austen"],
+            correct: 1
+        },
+        {
+            id: 6,
+            profile: { name: "Yuki Tanaka", subject: "Music", emoji: "🎵" },
+            question: "Which instrument has 88 keys?",
+            answers: ["Guitar", "Piano", "Violin"],
+            correct: 1
+        }
+    ];
+
+    let currentQuestionIndex = 0;
+    let score = 0;
+    let answered = false;
+    let startX = 0;
+    let currentX = 0;
+
+    // DOM Elements
+    const quizContent = document.getElementById('quizContent');
+    const navArrows = document.getElementById('navArrows');
+    const prevArrow = document.getElementById('prevArrow');
+    const nextArrow = document.getElementById('nextArrow');
+    const bottomHint = document.getElementById('bottomHint');
+    const resultsScreen = document.getElementById('resultsScreen');
+    const restartBtn = document.getElementById('restartBtn');
+
+    // Initialize Quiz
+    function init() {
+        document.getElementById('totalQuestions').textContent = quizData.length;
+        document.getElementById('totalQuestionsCounter').textContent = quizData.length;
+        renderQuestions();
+        updateUI();
+    }
+
+    // Render All Questions
+    function renderQuestions() {
+        quizContent.innerHTML = '';
+        quizData.forEach((q, index) => {
+            const card = createQuestionCard(q, index);
+            quizContent.appendChild(card);
+            if (index === 0) card.classList.add('active');
+        });
+    }
+
+    // Create Question Card
+    function createQuestionCard(data, index) {
+        const card = document.createElement('div');
+        card.className = 'question-card';
+        card.dataset.index = index;
+
+        card.innerHTML = `
+            <div class="profile-card">
+                <div class="profile-avatar">${data.profile.emoji}</div>
+                <div class="profile-info">
+                    <div class="profile-name">${data.profile.name}</div>
+                    <div class="profile-subject">${data.profile.subject}</div>
+                </div>
+            </div>
+
+            <div class="question-text">${data.question}</div>
+
+            <div class="answers">
+                ${data.answers.map((answer, i) => `
+                    <button class="answer-btn" data-index="${i}">
+                        ${answer}<span class="checkmark">✓</span>
+                    </button>
+                `).join('')}
+            </div>
+
+            <div class="feedback"></div>
+
+            <div class="social-bar">
+                <div class="social-item">
+                    <span class="social-icon">👍</span>
+                    <span>1243</span>
+                </div>
+                <div class="social-item">
+                    <span class="social-icon">💬</span>
+                    <span>89</span>
+                </div>
+                <div class="social-item">
+                    <span class="social-icon">📤</span>
+                </div>
+                <div class="social-item">
+                    <span class="social-icon">🔖</span>
+                </div>
+            </div>
+        `;
+
+        // Add answer click handlers
+        const answerBtns = card.querySelectorAll('.answer-btn');
+        answerBtns.forEach(btn => {
+            btn.addEventListener('click', () => handleAnswer(btn, data, card));
+        });
+
+        // Add swipe handlers
+        card.addEventListener('touchstart', handleTouchStart, { passive: true });
+        card.addEventListener('touchmove', handleTouchMove, { passive: false });
+        card.addEventListener('touchend', handleTouchEnd, { passive: true });
+
+        return card;
+    }
+
+    // Handle Answer Selection
+    function handleAnswer(btn, data, card) {
+        if (answered) return;
+
+        const selectedIndex = parseInt(btn.dataset.index);
+        const isCorrect = selectedIndex === data.correct;
+        const feedback = card.querySelector('.feedback');
+        const answerBtns = card.querySelectorAll('.answer-btn');
+
+        answered = true;
+
+        // Mark correct/incorrect
+        if (isCorrect) {
+            btn.classList.add('correct');
+            feedback.textContent = '🎉 Correct! Swipe right for next';
+            feedback.classList.add('show');
+            score++;
+            updateScore();
+            if (navigator.vibrate) navigator.vibrate([50, 30, 50]);
+        } else {
+            btn.classList.add('incorrect');
+            answerBtns[data.correct].classList.add('correct');
+            feedback.textContent = '❌ Not quite. Swipe right to continue';
+            feedback.classList.add('show');
+            if (navigator.vibrate) navigator.vibrate(200);
+        }
+
+        // Disable other buttons
+        answerBtns.forEach(b => {
+            if (b !== btn && !b.classList.contains('correct')) {
+                b.classList.add('disabled');
+            }
+        });
+
+        // Show navigation
+        bottomHint.style.display = 'none';
+        navArrows.classList.add('show');
+    }
+
+    // Touch Handlers for Swipe
+    function handleTouchStart(e) {
+        if (!answered) return;
+        startX = e.touches[0].clientX;
+        this.classList.add('swiping');
+    }
+
+    function handleTouchMove(e) {
+        if (!answered) return;
+        e.preventDefault();
+        currentX = e.touches[0].clientX;
+        const deltaX = currentX - startX;
+        this.style.transform = `translateX(${deltaX}px)`;
+        this.style.opacity = 1 - Math.abs(deltaX) / 500;
+    }
+
+    function handleTouchEnd(e) {
+        if (!answered) return;
+        const deltaX = currentX - startX;
+        this.classList.remove('swiping');
+
+        if (deltaX < -100 && currentQuestionIndex < quizData.length - 1) {
+            // Swipe left (next)
+            nextQuestion();
+        } else if (deltaX > 100 && currentQuestionIndex > 0) {
+            // Swipe right (prev)
+            prevQuestion();
+        } else {
+            // Reset
+            this.style.transform = '';
+            this.style.opacity = '';
+        }
+    }
+
+    // Navigation
+    function nextQuestion() {
+        if (currentQuestionIndex >= quizData.length - 1) {
+            showResults();
+            return;
+        }
+
+        const cards = document.querySelectorAll('.question-card');
+        cards[currentQuestionIndex].classList.remove('active');
+        cards[currentQuestionIndex].classList.add('prev');
+
+        currentQuestionIndex++;
+        cards[currentQuestionIndex].classList.add('active');
+        cards[currentQuestionIndex].style.transform = '';
+        cards[currentQuestionIndex].style.opacity = '';
+
+        answered = false;
+        updateUI();
+    }
+
+    function prevQuestion() {
+        if (currentQuestionIndex <= 0) return;
+
+        const cards = document.querySelectorAll('.question-card');
+        cards[currentQuestionIndex].classList.remove('active');
+
+        currentQuestionIndex--;
+        cards[currentQuestionIndex].classList.remove('prev');
+        cards[currentQuestionIndex].classList.add('active');
+        cards[currentQuestionIndex].style.transform = '';
+        cards[currentQuestionIndex].style.opacity = '';
+
+        answered = true; // Previous questions are already answered
+        updateUI();
+    }
+
+    // Update UI
+    function updateUI() {
+        document.getElementById('currentQuestion').textContent = currentQuestionIndex + 1;
+        prevArrow.classList.toggle('disabled', currentQuestionIndex === 0);
+
+        if (!answered) {
+            bottomHint.style.display = 'block';
+            navArrows.classList.remove('show');
+        }
+    }
+
+    function updateScore() {
+        document.getElementById('currentScore').textContent = score;
+    }
+
+    // Show Results
+    function showResults() {
+        quizContent.style.display = 'none';
+        navArrows.style.display = 'none';
+        bottomHint.style.display = 'none';
+        resultsScreen.classList.add('show');
+
+        document.getElementById('finalScore').textContent = score;
+        document.getElementById('finalTotal').textContent = quizData.length;
+
+        const percentage = (score / quizData.length) * 100;
+        let message = '';
+
+        if (percentage === 100) message = 'Perfect score! You\'re a genius! 🌟';
+        else if (percentage >= 80) message = 'Excellent work! Keep it up! 🎯';
+        else if (percentage >= 60) message = 'Good job! Room for improvement! 💪';
+        else message = 'Keep practicing! You\'ll do better next time! 📚';
+
+        document.getElementById('resultsMessage').textContent = message;
+    }
+
+    // Restart Quiz
+    restartBtn.addEventListener('click', () => {
+        currentQuestionIndex = 0;
+        score = 0;
+        answered = false;
+
+        resultsScreen.classList.remove('show');
+        quizContent.style.display = 'block';
+        bottomHint.style.display = 'block';
+
+        updateScore();
+        renderQuestions();
+        updateUI();
+    });
+
+    // Arrow navigation
+    prevArrow.addEventListener('click', prevQuestion);
+    nextArrow.addEventListener('click', nextQuestion);
+
+    // Initialize
+    init();
+})();
+</script>
+
+</body>
+</html>
